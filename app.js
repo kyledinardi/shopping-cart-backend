@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 require('dotenv').config();
+require('./helpers/passport');
 const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
