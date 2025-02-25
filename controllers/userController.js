@@ -64,3 +64,33 @@ exports.login = (req, res, next) => [
     return null;
   })(req, res, next),
 ];
+
+exports.getCurrentUser = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id).populate('cart.product').exec();
+  return res.json({ user });
+});
+
+exports.updateCart = asyncHandler(async (req, res, next) => {
+  const { productId, quantityDelta } = req.body;
+  const user = await User.findById(req.user.id).exec();
+
+  const productInCart = user.cart.find(
+    (cartItem) => cartItem.product._id.toString() === productId,
+  );
+
+  if (productInCart) {
+    if (productInCart.quantity + quantityDelta < 1) {
+      const i = user.cart.indexOf(productInCart);
+      user.cart.splice(i, 1);
+    } else {
+      productInCart.quantity += quantityDelta;
+    }
+  } else {
+    user.cart.push({ product: productId, quantity: quantityDelta });
+  }
+
+  user.totalCartQuantity += quantityDelta;
+  await user.save();
+  await user.populate('cart.product');
+  return res.json({ cart: user.cart, totalQuantity: user.totalCartQuantity });
+});
