@@ -8,12 +8,42 @@ function notFoundHandler() {
   return err;
 }
 
-exports.getAllProducts = asyncHandler(async (req, res, next) => {
-  const products = await Product.find().exec();
-  return res.json(products);
+exports.getProducts = asyncHandler(async (req, res, next) => {
+  const { category, rating, minPrice, maxPrice, search, sort } = req.query;
+  const sortOptions = {};
+
+  if (sort) {
+    const [field, value] = sort.split('-');
+    sortOptions[field] = value;
+  } else {
+    sortOptions.rating = 'desc';
+  }
+
+  const filters = {
+    'rating.rate': { $gte: rating ? Number(rating) : 0 },
+    
+    price: {
+      $gte: minPrice ? Number(minPrice) : 0,
+      $lte: maxPrice ? Number(maxPrice) : 10000,
+    },
+  };
+
+  if (category && category !== 'all') {
+    filters.category = category;
+  }
+
+  if (search) {
+    filters.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const products = await Product.find(filters).sort(sortOptions).exec();
+  return res.json({ products });
 });
 
-exports.getProduct = asyncHandler(async (req, res, next) => {
+exports.getOneProduct = asyncHandler(async (req, res, next) => {
   if (!Types.ObjectId.isValid(req.params.productId)) {
     return next(notFoundHandler());
   }
@@ -24,5 +54,5 @@ exports.getProduct = asyncHandler(async (req, res, next) => {
     return next(notFoundHandler());
   }
 
-  return res.json(product);
+  return res.json({ product });
 });
