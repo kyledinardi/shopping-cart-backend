@@ -9,37 +9,52 @@ function notFoundHandler() {
 }
 
 exports.getProducts = asyncHandler(async (req, res, next) => {
-  const { category, rating, minPrice, maxPrice, search, sort } = req.query;
+  const {
+    category,
+    rating,
+    minPrice = 0,
+    maxPrice = 10000,
+    search = '',
+    sort,
+  } = req.query;
+
   const sortOptions = {};
 
   if (sort) {
     const [field, value] = sort.split('-');
     sortOptions[field] = value;
-  } else {
-    sortOptions.rating = 'desc';
   }
 
   const filters = {
-    'rating.rate': { $gte: rating ? Number(rating) : 0 },
-    
-    price: {
-      $gte: minPrice ? Number(minPrice) : 0,
-      $lte: maxPrice ? Number(maxPrice) : 10000,
-    },
+    price: { $gte: Number(minPrice), $lte: Number(maxPrice) },
+
+    $or: [
+      { title: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } },
+    ],
   };
 
   if (category && category !== 'all') {
     filters.category = category;
   }
 
-  if (search) {
-    filters.$or = [
-      { title: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } },
-    ];
+  if (sort) {
+    const [field, value] = sort.split('-');
+    sortOptions[field] = value;
   }
 
-  const products = await Product.find(filters).sort(sortOptions).exec();
+  let products = await Product.find(filters).sort(sortOptions).exec();
+
+  if (rating) {
+    products = products.filter(
+      (product) => product.averageRating >= Number(rating),
+    );
+  }
+
+  if (!sort || sort.split('-')[0] === 'rating') {
+    products.sort((a, b) => b.averageRating - a.averageRating);
+  }
+
   return res.json({ products });
 });
 
