@@ -28,7 +28,7 @@ function getAverageRating() {
   }
 
   const ratingSum = this.ratings.reduce((sum, rating) => sum + rating.rate, 0);
-  return Math.round((ratingSum / this.ratings.length) * 100) / 100;
+  return Math.round((ratingSum / this.ratings.length) * 10) / 10;
 }
 
 ProductSchema.virtual('averageRating').get(getAverageRating);

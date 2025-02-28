@@ -71,3 +71,27 @@ exports.getOneProduct = asyncHandler(async (req, res, next) => {
 
   return res.json({ product });
 });
+
+exports.updateRating = asyncHandler(async (req, res, next) => {
+  const userId = req.user._id.toString();
+  const product = await Product.findById(req.params.productId).exec();
+
+  if (req.body.rating === 'unrated') {
+    product.ratings = product.ratings.filter(
+      (rating) => rating.user.toString() !== userId,
+    );
+  } else {
+    const ratingInProduct = product.ratings.find(
+      (rating) => rating.user.toString() === userId,
+    );
+    
+    if (ratingInProduct) {
+      ratingInProduct.rate = Number(req.body.rating);
+    } else {
+      product.ratings.push({ rate: Number(req.body.rating), user: userId });
+    }
+  }
+
+  await product.save();
+  return res.json({ product });
+});

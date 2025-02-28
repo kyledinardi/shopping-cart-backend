@@ -11,7 +11,8 @@ router.get('/products', productController.getProducts);
 router.get('/products/:productId', productController.getOneProduct);
 
 router.use(passport.authenticate('jwt', { session: false }));
-router.get('/user', userController.getCurrentUser);
-router.put('/cart', userController.updateCart);
+router.get('/users/current-user', userController.getCurrentUser);
+router.put('/users/cart', userController.updateCart);
+router.put('/products/rating/:productId', productController.updateRating);
 
 module.exports = router;
