@@ -1,4 +1,8 @@
 const asyncHandler = require('express-async-handler');
+const multer = require('multer');
+const { body } = require('express-validator');
+const { unlink } = require('fs/promises');
+const cloudinary = require('cloudinary').v2;
 const { Types } = require('mongoose');
 const Product = require('../models/product');
 
@@ -8,25 +12,55 @@ function notFoundHandler() {
   return err;
 }
 
+const storage = multer.diskStorage({
+  destination: 'temp/',
+
+  filename(req, file, cb) {
+    cb(null, `${crypto.randomUUID()}.${file.originalname.split('.').pop()}`);
+  },
+});
+
+const upload = multer({ storage });
+
+exports.createProduct = [
+  upload.single('image'),
+  body('title').trim(),
+  body('price').trim(),
+  body('category').trim(),
+  body('description').trim(),
+
+  asyncHandler(async (req, res, next) => {
+    const result = await cloudinary.uploader.upload(req.file.path);
+    const image = result.secure_url;
+    unlink(req.file.path);
+
+    const { title, category, price, description } = req.body;
+    const product = new Product({ title, category, price, description, image });
+    await product.save();
+    return res.json({ product });
+  }),
+];
+
 exports.getProducts = asyncHandler(async (req, res, next) => {
   const {
-    category,
-    rating,
+    rating = 0,
     minPrice = 0,
     maxPrice = 10000,
     search = '',
+    category,
     sort,
   } = req.query;
 
-  const sortOptions = {};
+  let sortOptions = { averageRating: 'desc' };
 
   if (sort) {
     const [field, value] = sort.split('-');
-    sortOptions[field] = value;
+    sortOptions = { [field]: value };
   }
 
   const filters = {
     price: { $gte: Number(minPrice), $lte: Number(maxPrice) },
+    averageRating: { $gte: Number(rating) },
 
     $or: [
       { title: { $regex: search, $options: 'i' } },
@@ -37,24 +71,8 @@ exports.getProducts = asyncHandler(async (req, res, next) => {
   if (category && category !== 'all') {
     filters.category = category;
   }
-
-  if (sort) {
-    const [field, value] = sort.split('-');
-    sortOptions[field] = value;
-  }
-
-  let products = await Product.find(filters).sort(sortOptions).exec();
-
-  if (rating) {
-    products = products.filter(
-      (product) => product.averageRating >= Number(rating),
-    );
-  }
-
-  if (!sort || sort.split('-')[0] === 'rating') {
-    products.sort((a, b) => b.averageRating - a.averageRating);
-  }
-
+  
+  const products = await Product.find(filters).sort(sortOptions).exec();
   return res.json({ products });
 });
 
@@ -69,29 +87,5 @@ exports.getOneProduct = asyncHandler(async (req, res, next) => {
     return next(notFoundHandler());
   }
 
-  return res.json({ product });
-});
-
-exports.updateRating = asyncHandler(async (req, res, next) => {
-  const userId = req.user._id.toString();
-  const product = await Product.findById(req.params.productId).exec();
-
-  if (req.body.rating === 'unrated') {
-    product.ratings = product.ratings.filter(
-      (rating) => rating.user.toString() !== userId,
-    );
-  } else {
-    const ratingInProduct = product.ratings.find(
-      (rating) => rating.user.toString() === userId,
-    );
-    
-    if (ratingInProduct) {
-      ratingInProduct.rate = Number(req.body.rating);
-    } else {
-      product.ratings.push({ rate: Number(req.body.rating), user: userId });
-    }
-  }
-
-  await product.save();
   return res.json({ product });
 });
