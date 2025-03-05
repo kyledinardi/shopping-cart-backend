@@ -2,6 +2,15 @@ const asyncHandler = require('express-async-handler');
 const Product = require('../models/product');
 const Rating = require('../models/rating');
 
+exports.getOneRating = asyncHandler(async (req, res, next) => {
+  const rating = await Rating.findOne({
+    user: req.user._id,
+    product: req.params.productId,
+  });
+
+  return res.json(rating);
+});
+
 exports.updateRating = asyncHandler(async (req, res, next) => {
   const product = await Product.findById(req.body.productId).exec();
   const { averageRating, ratingCount } = product;
@@ -52,7 +61,7 @@ exports.deleteRating = asyncHandler(async (req, res, next) => {
       const ratingSum = averageRating * ratingCount - currentRating.rate;
       product.averageRating = ratingSum / (ratingCount - 1);
     }
-    
+
     product.ratingCount -= 1;
     await product.save();
     await currentRating.deleteOne();

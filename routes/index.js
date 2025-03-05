@@ -18,6 +18,7 @@ router.put('/users/cart', userController.updateCart);
 
 router.post('/products', productController.createProduct);
 router.put('/products/checkout', productController.checkoutProducts);
+router.get('/ratings/:productId', ratingController.getOneRating);
 router.put('/ratings', ratingController.updateRating);
 router.delete('/ratings', ratingController.deleteRating);
 
