@@ -6,12 +6,6 @@ const cloudinary = require('cloudinary').v2;
 const { Types } = require('mongoose');
 const Product = require('../models/product');
 
-function notFoundHandler() {
-  const err = new Error('Product not found');
-  err.status = 404;
-  return err;
-}
-
 const storage = multer.diskStorage({
   destination: 'temp/',
 
@@ -20,7 +14,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage, limits: { fileSize: 10_000_000 } });
 
 exports.createProduct = [
   upload.single('image'),
@@ -77,23 +71,35 @@ exports.getProducts = asyncHandler(async (req, res, next) => {
 });
 
 exports.getRandomProduct = asyncHandler(async (req, res, next) => {
-  // const productCount = await Product.countDocuments().exec();
-  // const random = Math.floor(Math.random() * productCount);
-  // const product = await Product.findOne().skip(random).exec();
   const products = await Product.aggregate([{ $sample: { size: 1 } }]);
   return res.json({ product: products[0] });
 });
 
 exports.getOneProduct = asyncHandler(async (req, res, next) => {
   if (!Types.ObjectId.isValid(req.params.productId)) {
-    return next(notFoundHandler());
+    const err = new Error('Product not found');
+    err.status = 404;
+    return next(err);
   }
 
   const product = await Product.findById(req.params.productId).exec();
 
   if (!product) {
-    return next(notFoundHandler());
+    const err = new Error('Product not found');
+    err.status = 404;
+    return next(err);
   }
 
   return res.json({ product });
+});
+
+exports.checkoutProducts = asyncHandler(async (req, res, next) => {
+  const productPromises = req.body.cartContents.map(async (item) => {
+    const product = await Product.findById(item.product._id);
+    product.purchaseCount += item.quantity;
+    return product.save();
+  });
+
+  const products = await Promise.all(productPromises);
+  return res.json(products);
 });

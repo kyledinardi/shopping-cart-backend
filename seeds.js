@@ -36,8 +36,9 @@ async function seedDatabase() {
       description: seedProduct.description,
       category: seedProduct.category,
       image: seedProduct.image,
-      averageRating: seedProduct.rating.rate,
+      purchaseCount: Math.ceil(Math.random() * 1000),
       ratingCount: Math.round(seedProduct.rating.count / 10),
+      averageRating: seedProduct.rating.rate,
     }),
   );
 

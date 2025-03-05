@@ -17,6 +17,7 @@ router.get('/users/current-user', userController.getCurrentUser);
 router.put('/users/cart', userController.updateCart);
 
 router.post('/products', productController.createProduct);
+router.put('/products/checkout', productController.checkoutProducts);
 router.put('/ratings', ratingController.updateRating);
 router.delete('/ratings', ratingController.deleteRating);
 
