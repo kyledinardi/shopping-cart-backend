@@ -71,9 +71,17 @@ exports.getProducts = asyncHandler(async (req, res, next) => {
   if (category && category !== 'all') {
     filters.category = category;
   }
-  
+
   const products = await Product.find(filters).sort(sortOptions).exec();
   return res.json({ products });
+});
+
+exports.getRandomProduct = asyncHandler(async (req, res, next) => {
+  // const productCount = await Product.countDocuments().exec();
+  // const random = Math.floor(Math.random() * productCount);
+  // const product = await Product.findOne().skip(random).exec();
+  const products = await Product.aggregate([{ $sample: { size: 1 } }]);
+  return res.json({ product: products[0] });
 });
 
 exports.getOneProduct = asyncHandler(async (req, res, next) => {
